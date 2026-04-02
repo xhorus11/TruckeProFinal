@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from './firebase';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -135,6 +136,7 @@ export default function App() {
     <ErrorBoundary>
       <GoogleCalendarProvider>
         <AppContent />
+        <SpeedInsights />
       </GoogleCalendarProvider>
     </ErrorBoundary>
   );
