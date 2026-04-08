@@ -21,25 +21,29 @@ function AppContent() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        try {
-          const userRef = doc(db, 'users', currentUser.uid);
-          const userSnap = await getDoc(userRef);
-          if (!userSnap.exists()) {
-            await setDoc(userRef, {
-              uid: currentUser.uid,
-              email: currentUser.email,
-              displayName: currentUser.displayName,
-              photoURL: currentUser.photoURL,
-              createdAt: new Date().toISOString()
-            });
+      try {
+        if (currentUser) {
+          try {
+            const userRef = doc(db, 'users', currentUser.uid);
+            const userSnap = await getDoc(userRef);
+            if (!userSnap.exists()) {
+              await setDoc(userRef, {
+                uid: currentUser.uid,
+                email: currentUser.email,
+                displayName: currentUser.displayName,
+                photoURL: currentUser.photoURL,
+                createdAt: new Date().toISOString()
+              });
+            }
+          } catch (err) {
+            console.error("Error creating user doc:", err);
+            // We don't throw here so the app can still load
           }
-        } catch (err) {
-          handleFirestoreError(err, OperationType.CREATE, `users/${currentUser.uid}`);
         }
+      } finally {
+        setUser(currentUser);
+        setLoading(false);
       }
-      setUser(currentUser);
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
