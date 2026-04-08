@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { format } from 'date-fns';
+import { format, subDays, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Activity, Flame, CheckCircle2, Target, Sparkles, ArrowRight, Zap, TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -16,6 +17,8 @@ export default function Dashboard() {
     workouts: 0,
     reminders: 0
   });
+
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -56,11 +59,33 @@ export default function Dashboard() {
       setStats(s => ({ ...s, reminders: snapshot.size }));
     }, (err) => handleFirestoreError(err, OperationType.GET, 'reminders'));
 
+    // Listen to Weekly Meals for Chart
+    const startDate = format(subDays(new Date(), 6), 'yyyy-MM-dd');
+    const qWeeklyMeals = query(collection(db, 'meals'), where('userId', '==', userId), where('date', '>=', startDate));
+    const unsubWeeklyMeals = onSnapshot(qWeeklyMeals, (snapshot) => {
+      const mealsByDate: Record<string, number> = {};
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        mealsByDate[data.date] = (mealsByDate[data.date] || 0) + (data.calories || 0);
+      });
+
+      const last7Days = eachDayOfInterval({ start: subDays(new Date(), 6), end: new Date() });
+      const chartData = last7Days.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        return {
+          name: format(date, 'EEE', { locale: es }),
+          calorias: mealsByDate[dateStr] || 0
+        };
+      });
+      setWeeklyData(chartData);
+    }, (err) => handleFirestoreError(err, OperationType.GET, 'meals'));
+
     return () => {
       unsubTasks();
       unsubMeals();
       unsubWorkouts();
       unsubReminders();
+      unsubWeeklyMeals();
     };
   }, []);
 
@@ -141,18 +166,33 @@ export default function Dashboard() {
             <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6">
               <TrendingUp className="w-7 h-7 text-emerald-600" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-4">Análisis Semanal</h3>
-            <p className="text-slate-500 leading-relaxed">
-              Tu consistencia en el gimnasio ha mejorado un <span className="text-emerald-600 font-bold">15%</span> respecto a la semana pasada. ¡Excelente trabajo!
-            </p>
+            <h3 className="text-2xl font-black text-slate-900 mb-4">Calorías (Últimos 7 días)</h3>
+            <div className="h-40 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={weeklyData}>
+                  <defs>
+                    <linearGradient id="colorCals" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
+                  />
+                  <Area type="monotone" dataKey="calorias" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorCals)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
           
-          <div className="mt-8 pt-8 border-t border-slate-50">
-            <div className="flex items-center gap-3 text-indigo-600 font-bold group cursor-pointer">
+          <div className="mt-6 pt-6 border-t border-slate-50">
+            <Link to="/nutrition" className="flex items-center gap-3 text-indigo-600 font-bold group cursor-pointer">
               <Sparkles className="w-5 h-5" />
-              <span>Ver consejos de IA</span>
+              <span>Ver detalles de nutrición</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform ml-auto" />
-            </div>
+            </Link>
           </div>
         </div>
       </div>
