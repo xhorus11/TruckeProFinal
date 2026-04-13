@@ -85,7 +85,7 @@ export default function Nutrition() {
     setIsAnalyzing(true);
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: `Analiza este alimento y proporciona estimaciones nutricionales: "${foodInput}". Devuelve un JSON con name (string, nombre en español), calories (number), protein (number en gramos), carbs (number en gramos), fat (number en gramos).`,
         config: {
           responseMimeType: "application/json",
@@ -103,7 +103,9 @@ export default function Nutrition() {
         },
       });
 
-      const result = JSON.parse(response.text);
+      const text = response.text || "{}";
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const result = JSON.parse(cleanText);
       
       await addDoc(collection(db, 'meals'), {
         userId: auth.currentUser.uid,
@@ -129,48 +131,55 @@ export default function Nutrition() {
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: {
-            parts: [
-              { inlineData: { data: base64Data, mimeType: file.type } },
-              { text: "Analiza esta comida en la imagen y estima sus valores nutricionales. Devuelve un JSON con name (string, nombre en español), calories (number), protein (number en gramos), carbs (number en gramos), fat (number en gramos)." }
-            ]
-          },
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                calories: { type: Type.NUMBER },
-                protein: { type: Type.NUMBER },
-                carbs: { type: Type.NUMBER },
-                fat: { type: Type.NUMBER }
-              },
-              required: ["name", "calories", "protein", "carbs", "fat"]
-            }
-          },
-        });
+        try {
+          const base64Data = (reader.result as string).split(',')[1];
+          
+          const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: {
+              parts: [
+                { inlineData: { data: base64Data, mimeType: file.type } },
+                { text: "Analiza esta comida en la imagen y estima sus valores nutricionales. Devuelve un JSON con name (string, nombre en español), calories (number), protein (number en gramos), carbs (number en gramos), fat (number en gramos)." }
+              ]
+            },
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  calories: { type: Type.NUMBER },
+                  protein: { type: Type.NUMBER },
+                  carbs: { type: Type.NUMBER },
+                  fat: { type: Type.NUMBER }
+                },
+                required: ["name", "calories", "protein", "carbs", "fat"]
+              }
+            },
+          });
 
-        const result = JSON.parse(response.text);
-        
-        await addDoc(collection(db, 'meals'), {
-          userId: auth.currentUser.uid,
-          ...result,
-          date: format(selectedDate, 'yyyy-MM-dd'),
-          createdAt: new Date().toISOString()
-        });
+          const text = response.text || "{}";
+          const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          const result = JSON.parse(cleanText);
+          
+          await addDoc(collection(db, 'meals'), {
+            userId: auth.currentUser!.uid,
+            ...result,
+            date: format(selectedDate, 'yyyy-MM-dd'),
+            createdAt: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error("AI Image Analysis failed:", err);
+          alert("Fallo al analizar la imagen. Por favor, inténtalo de nuevo.");
+        } finally {
+          setIsAnalyzing(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      console.error("AI Image Analysis failed:", err);
-      alert("Fallo al analizar la imagen. Por favor, inténtalo de nuevo.");
-    } finally {
+      console.error("File reading failed:", err);
       setIsAnalyzing(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -229,7 +238,7 @@ export default function Nutrition() {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -257,7 +266,9 @@ export default function Nutrition() {
         }
       });
 
-      const result = JSON.parse(response.text);
+      const text = response.text || "{}";
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const result = JSON.parse(cleanText);
       setSuggestions(result.suggestions);
     } catch (err) {
       console.error("AI Suggestions failed:", err);
