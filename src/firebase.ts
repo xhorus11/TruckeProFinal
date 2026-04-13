@@ -13,7 +13,7 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'missing-key' });
+export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyC2p81i7kHbEqj-l7eQv0M4qD4G9ifbWeI' });
 
 export enum OperationType {
   CREATE = 'create',

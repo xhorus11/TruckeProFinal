@@ -115,9 +115,9 @@ export default function Nutrition() {
       });
 
       setFoodInput('');
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Analysis failed:", err);
-      alert("Fallo al analizar el alimento. Por favor, inténtalo de nuevo.");
+      alert(`Fallo al analizar el alimento: ${err.message || err}. Por favor, inténtalo de nuevo.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -168,9 +168,9 @@ export default function Nutrition() {
             date: format(selectedDate, 'yyyy-MM-dd'),
             createdAt: new Date().toISOString()
           });
-        } catch (err) {
+        } catch (err: any) {
           console.error("AI Image Analysis failed:", err);
-          alert("Fallo al analizar la imagen. Por favor, inténtalo de nuevo.");
+          alert(`Fallo al analizar la imagen: ${err.message || err}. Por favor, inténtalo de nuevo.`);
         } finally {
           setIsAnalyzing(false);
           if (fileInputRef.current) fileInputRef.current.value = '';
