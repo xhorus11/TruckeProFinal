@@ -49,6 +49,10 @@ export default function Nutrition() {
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [suggestions, setSuggestions] = useState<MealSuggestion[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [entryMode, setEntryMode] = useState<'ai' | 'manual'>('ai');
+  const [suggestionMode, setSuggestionMode] = useState<'ai' | 'manual'>('ai');
+  const [manualMeal, setManualMeal] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+  const [goals, setGoals] = useState({ calories: 2000, protein: 150, carbs: 200, fat: 65 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -167,6 +171,29 @@ export default function Nutrition() {
     } finally {
       setIsAnalyzing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const addManualMeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualMeal.name.trim() || !auth.currentUser) return;
+
+    try {
+      await addDoc(collection(db, 'meals'), {
+        userId: auth.currentUser.uid,
+        name: manualMeal.name,
+        calories: Number(manualMeal.calories) || 0,
+        protein: Number(manualMeal.protein) || 0,
+        carbs: Number(manualMeal.carbs) || 0,
+        fat: Number(manualMeal.fat) || 0,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        createdAt: new Date().toISOString()
+      });
+
+      setManualMeal({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+    } catch (err) {
+      console.error("Manual Entry failed:", err);
+      alert("Fallo al añadir el alimento manualmente.");
     }
   };
 
@@ -301,46 +328,140 @@ export default function Nutrition() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <form onSubmit={analyzeAndAddMeal} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
-            <div className="flex gap-4">
-              <div className="relative flex-1">
-                <Utensils className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
-                <input
-                  type="text"
-                  value={foodInput}
-                  onChange={(e) => setFoodInput(e.target.value)}
-                  placeholder="¿Qué comiste? (ej. '2 huevos revueltos y una tostada')"
-                  className="input-field py-5 pl-14 pr-4 text-lg w-full"
-                />
-              </div>
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
               <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn-secondary px-6 shrink-0 flex items-center justify-center"
-                title="Subir imagen de comida"
+                onClick={() => setEntryMode('ai')}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                  entryMode === 'ai' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                )}
               >
-                <Camera className="w-6 h-6" />
+                <Sparkles className="w-4 h-4" />
+                Entrada con IA
               </button>
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="hidden" 
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-              />
+              <button
+                onClick={() => setEntryMode('manual')}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2",
+                  entryMode === 'manual' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                <Utensils className="w-4 h-4" />
+                Entrada Manual
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={!foodInput.trim() || isAnalyzing}
-              className="btn-primary w-full py-5 text-lg font-bold flex items-center justify-center gap-3"
-            >
-              {isAnalyzing ? (
-                <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <><Sparkles className="w-6 h-6" /> Analizar con IA</>
-              )}
-            </button>
-          </form>
+
+            {entryMode === 'ai' ? (
+              <form onSubmit={analyzeAndAddMeal} className="space-y-6">
+                <div className="flex gap-4">
+                  <div className="relative flex-1">
+                    <Utensils className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
+                    <input
+                      type="text"
+                      value={foodInput}
+                      onChange={(e) => setFoodInput(e.target.value)}
+                      placeholder="¿Qué comiste? (ej. '2 huevos revueltos y una tostada')"
+                      className="input-field py-5 pl-14 pr-4 text-lg w-full"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-secondary px-6 shrink-0 flex items-center justify-center"
+                    title="Subir imagen de comida"
+                  >
+                    <Camera className="w-6 h-6" />
+                  </button>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!foodInput.trim() || isAnalyzing}
+                  className="btn-primary w-full py-5 text-lg font-bold flex items-center justify-center gap-3"
+                >
+                  {isAnalyzing ? (
+                    <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <><Sparkles className="w-6 h-6" /> Analizar con IA</>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={addManualMeal} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Nombre del alimento</label>
+                  <input
+                    type="text"
+                    value={manualMeal.name}
+                    onChange={(e) => setManualMeal({ ...manualMeal, name: e.target.value })}
+                    placeholder="Ej. Arroz con pollo"
+                    className="input-field w-full"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Calorías</label>
+                    <input
+                      type="number"
+                      value={manualMeal.calories}
+                      onChange={(e) => setManualMeal({ ...manualMeal, calories: e.target.value })}
+                      placeholder="kcal"
+                      className="input-field w-full"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Proteínas (g)</label>
+                    <input
+                      type="number"
+                      value={manualMeal.protein}
+                      onChange={(e) => setManualMeal({ ...manualMeal, protein: e.target.value })}
+                      placeholder="g"
+                      className="input-field w-full"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Carbos (g)</label>
+                    <input
+                      type="number"
+                      value={manualMeal.carbs}
+                      onChange={(e) => setManualMeal({ ...manualMeal, carbs: e.target.value })}
+                      placeholder="g"
+                      className="input-field w-full"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Grasas (g)</label>
+                    <input
+                      type="number"
+                      value={manualMeal.fat}
+                      onChange={(e) => setManualMeal({ ...manualMeal, fat: e.target.value })}
+                      placeholder="g"
+                      className="input-field w-full"
+                      required
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={!manualMeal.name.trim()}
+                  className="btn-primary w-full py-4 text-lg font-bold flex items-center justify-center gap-3 mt-2"
+                >
+                  <Plus className="w-5 h-5" /> Añadir Manualmente
+                </button>
+              </form>
+            )}
+          </div>
 
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-6 border-b border-slate-50 bg-slate-50/50">
@@ -426,41 +547,108 @@ export default function Nutrition() {
           </div>
 
           <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-emerald-900 font-bold flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                Sugerencias IA
-              </h3>
-              <button 
-                onClick={getSuggestions}
-                disabled={isSuggesting}
-                className="text-xs font-bold bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-300 transition-colors disabled:opacity-50 flex items-center gap-1"
+            <div className="flex gap-2 p-1 bg-emerald-100/50 rounded-xl w-fit mb-4">
+              <button
+                onClick={() => setSuggestionMode('ai')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                  suggestionMode === 'ai' ? "bg-white text-emerald-700 shadow-sm" : "text-emerald-600 hover:text-emerald-800"
+                )}
               >
-                {isSuggesting ? (
-                  <><div className="w-3 h-3 border-2 border-emerald-800 border-t-transparent rounded-full animate-spin" /> Generando...</>
-                ) : 'Obtener'}
+                <Sparkles className="w-3.5 h-3.5" />
+                IA
+              </button>
+              <button
+                onClick={() => setSuggestionMode('manual')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                  suggestionMode === 'manual' ? "bg-white text-emerald-700 shadow-sm" : "text-emerald-600 hover:text-emerald-800"
+                )}
+              >
+                <Target className="w-3.5 h-3.5" />
+                Calculadora
               </button>
             </div>
-            
-            {suggestions.length > 0 ? (
-              <div className="space-y-4">
-                {suggestions.map((sug, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100/50">
-                    <h4 className="font-bold text-slate-800 text-sm">{sug.name}</h4>
-                    <p className="text-xs text-slate-500 mt-1 mb-2">{sug.description}</p>
-                    <div className="flex gap-2">
-                      <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-md">{sug.calories} kcal</span>
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">P: {sug.protein}g</span>
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">C: {sug.carbs}g</span>
-                      <span className="text-[10px] font-bold text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded-md">G: {sug.fat}g</span>
-                    </div>
+
+            {suggestionMode === 'ai' ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-emerald-900 font-bold flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    Sugerencias IA
+                  </h3>
+                  <button 
+                    onClick={getSuggestions}
+                    disabled={isSuggesting}
+                    className="text-xs font-bold bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-300 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {isSuggesting ? (
+                      <><div className="w-3 h-3 border-2 border-emerald-800 border-t-transparent rounded-full animate-spin" /> Generando...</>
+                    ) : 'Obtener'}
+                  </button>
+                </div>
+                
+                {suggestions.length > 0 ? (
+                  <div className="space-y-4">
+                    {suggestions.map((sug, idx) => (
+                      <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100/50">
+                        <h4 className="font-bold text-slate-800 text-sm">{sug.name}</h4>
+                        <p className="text-xs text-slate-500 mt-1 mb-2">{sug.description}</p>
+                        <div className="flex gap-2">
+                          <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-md">{sug.calories} kcal</span>
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">P: {sug.protein}g</span>
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">C: {sug.carbs}g</span>
+                          <span className="text-[10px] font-bold text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded-md">G: {sug.fat}g</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <p className="text-emerald-700 text-sm leading-relaxed">
+                    Pulsa "Obtener" para recibir sugerencias de comidas basadas en tus macros actuales y lo que ya has comido hoy.
+                  </p>
+                )}
+              </>
             ) : (
-              <p className="text-emerald-700 text-sm leading-relaxed">
-                Pulsa "Obtener" para recibir sugerencias de comidas basadas en tus macros actuales y lo que ya has comido hoy.
-              </p>
+              <div className="space-y-4">
+                <h3 className="text-emerald-900 font-bold flex items-center gap-2 mb-4">
+                  <Target className="w-5 h-5" />
+                  Calculadora de Macros
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Calorías Restantes</p>
+                    <p className={cn("text-lg font-black", goals.calories - totals.calories < 0 ? "text-red-500" : "text-emerald-600")}>
+                      {Math.round(goals.calories - totals.calories)} <span className="text-xs font-bold text-slate-400">kcal</span>
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Proteínas Restantes</p>
+                    <p className={cn("text-lg font-black", goals.protein - totals.protein < 0 ? "text-red-500" : "text-blue-600")}>
+                      {Math.round(goals.protein - totals.protein)} <span className="text-xs font-bold text-slate-400">g</span>
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Carbos Restantes</p>
+                    <p className={cn("text-lg font-black", goals.carbs - totals.carbs < 0 ? "text-red-500" : "text-emerald-600")}>
+                      {Math.round(goals.carbs - totals.carbs)} <span className="text-xs font-bold text-slate-400">g</span>
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-100/50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Grasas Restantes</p>
+                    <p className={cn("text-lg font-black", goals.fat - totals.fat < 0 ? "text-red-500" : "text-yellow-600")}>
+                      {Math.round(goals.fat - totals.fat)} <span className="text-xs font-bold text-slate-400">g</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-emerald-200/50">
+                  <p className="text-xs font-bold text-emerald-800 mb-2">Ajustar Metas Diarias</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="number" value={goals.calories} onChange={e => setGoals({...goals, calories: Number(e.target.value)})} className="input-field text-xs py-1.5 px-2" placeholder="Calorías" />
+                    <input type="number" value={goals.protein} onChange={e => setGoals({...goals, protein: Number(e.target.value)})} className="input-field text-xs py-1.5 px-2" placeholder="Proteínas" />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
