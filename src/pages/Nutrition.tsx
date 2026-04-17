@@ -117,7 +117,19 @@ export default function Nutrition() {
       setFoodInput('');
     } catch (err: any) {
       console.error("AI Analysis failed:", err);
-      alert(`Fallo al analizar el alimento: ${err.message || err}. Por favor, inténtalo de nuevo.`);
+      let errorMessage = err.message || String(err);
+      try {
+        if (errorMessage.includes('{')) {
+          const errorObj = JSON.parse(errorMessage.substring(errorMessage.indexOf('{')));
+          if (errorObj.error && errorObj.error.message) {
+            errorMessage = errorObj.error.message;
+            if (errorMessage.includes('experiencing high demand')) {
+              errorMessage = "El servicio de Inteligencia Artificial está muy saturado en este momento. Por favor, espera unos minutos e inténtalo de nuevo.";
+            }
+          }
+        }
+      } catch (e) {}
+      alert(`Fallo al analizar el alimento: ${errorMessage}.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -170,7 +182,21 @@ export default function Nutrition() {
           });
         } catch (err: any) {
           console.error("AI Image Analysis failed:", err);
-          alert(`Fallo al analizar la imagen: ${err.message || err}. Por favor, inténtalo de nuevo.`);
+          let errorMessage = err.message || String(err);
+          // Intentar parsear si es un JSON de error de la API
+          try {
+            if (errorMessage.includes('{')) {
+              const errorObj = JSON.parse(errorMessage.substring(errorMessage.indexOf('{')));
+              if (errorObj.error && errorObj.error.message) {
+                errorMessage = errorObj.error.message;
+                // Traducir algunos errores comunes
+                if (errorMessage.includes('experiencing high demand')) {
+                  errorMessage = "El servicio de Inteligencia Artificial está muy saturado en este momento. Por favor, espera unos minutos e inténtalo de nuevo.";
+                }
+              }
+            }
+          } catch (e) {}
+          alert(`Fallo al analizar la imagen: ${errorMessage}.`);
         } finally {
           setIsAnalyzing(false);
           if (fileInputRef.current) fileInputRef.current.value = '';
@@ -270,9 +296,21 @@ export default function Nutrition() {
       const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
       const result = JSON.parse(cleanText);
       setSuggestions(result.suggestions);
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Suggestions failed:", err);
-      alert("Fallo al obtener sugerencias. Por favor, inténtalo de nuevo.");
+      let errorMessage = err.message || String(err);
+      try {
+        if (errorMessage.includes('{')) {
+          const errorObj = JSON.parse(errorMessage.substring(errorMessage.indexOf('{')));
+          if (errorObj.error && errorObj.error.message) {
+            errorMessage = errorObj.error.message;
+            if (errorMessage.includes('experiencing high demand')) {
+              errorMessage = "El servicio de Inteligencia Artificial está muy saturado en este momento. Por favor, espera unos minutos e inténtalo de nuevo.";
+            }
+          }
+        }
+      } catch (e) {}
+      alert(`Fallo al obtener sugerencias: ${errorMessage}.`);
     } finally {
       setIsSuggesting(false);
     }
