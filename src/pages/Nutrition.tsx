@@ -111,8 +111,9 @@ export default function Nutrition() {
         count: count,
         updatedAt: new Date().toISOString()
       }, { merge: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Hydration update failed:", error);
+      alert(`⚠️ Fallo al guardar hidratación: ${error.message || error}`);
     }
   };
 
@@ -264,9 +265,9 @@ export default function Nutrition() {
       });
 
       setManualMeal({ name: '', calories: '', protein: '', carbs: '', fat: '' });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Manual Entry failed:", err);
-      alert("Fallo al añadir el alimento manualmente.");
+      alert(`⚠️ Fallo al añadir el alimento manualmente: ${err.message || err}`);
     }
   };
 

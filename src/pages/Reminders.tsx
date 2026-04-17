@@ -53,8 +53,9 @@ export default function Reminders() {
         createdAt: new Date().toISOString()
       });
       setNewReminder('');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'reminders');
+    } catch (error: any) {
+      console.error("Error at addReminder:", error);
+      alert(`⚠️ Fallo al guardar: ${error.message || error}`);
     }
   };
 
@@ -63,16 +64,18 @@ export default function Reminders() {
       await updateDoc(doc(db, 'reminders', id), {
         completed: !completed
       });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `reminders/${id}`);
+    } catch (error: any) {
+      console.error("Error at toggleReminder:", error);
+      alert(`⚠️ Fallo al actualizar: ${error.message || error}`);
     }
   };
 
   const deleteReminder = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'reminders', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `reminders/${id}`);
+    } catch (error: any) {
+      console.error("Error at deleteReminder:", error);
+      alert(`⚠️ Fallo al borrar: ${error.message || error}`);
     }
   };
 

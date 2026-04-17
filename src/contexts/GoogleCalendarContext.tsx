@@ -100,7 +100,7 @@ export const GoogleCalendarProvider: React.FC<{ children: React.ReactNode }> = (
   };
 
   return (
-    <GoogleCalendarContext.Provider value={{ accessToken, setAccessToken, fetchEvents, createEvent, updateEvent }}>
+    <GoogleCalendarContext.Provider value={{ accessToken, setAccessToken, fetchEvents, createEvent, updateEvent, connectCalendar }}>
       {children}
     </GoogleCalendarContext.Provider>
   );
