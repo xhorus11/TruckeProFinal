@@ -8,6 +8,7 @@ interface GoogleCalendarContextType {
   fetchEvents: () => Promise<any[]>;
   createEvent: (event: any) => Promise<any>;
   updateEvent: (eventId: string, event: any) => Promise<any>;
+  connectCalendar: () => Promise<boolean>;
 }
 
 const GoogleCalendarContext = createContext<GoogleCalendarContextType | undefined>(undefined);
@@ -22,6 +23,25 @@ export const GoogleCalendarProvider: React.FC<{ children: React.ReactNode }> = (
       localStorage.removeItem('google_access_token');
     }
   }, [accessToken]);
+
+  const connectCalendar = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/calendar.events');
+      provider.setCustomParameters({ prompt: 'consent' }); // force prompt to ensure we get a token
+
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential && credential.accessToken) {
+        setAccessToken(credential.accessToken);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error connecting Google Calendar:", error);
+      return false;
+    }
+  };
 
   const fetchEvents = async () => {
     if (!accessToken) return [];

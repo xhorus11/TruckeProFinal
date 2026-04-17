@@ -125,8 +125,9 @@ export default function Gym() {
         createdAt: new Date().toISOString()
       });
       setExercise('');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'workouts');
+    } catch (error: any) {
+      console.error("Error at addWorkout:", error);
+      alert(`⚠️ Fallo al guardar el ejercicio: ${error.message || error}`);
     }
   };
 
@@ -144,24 +145,27 @@ export default function Gym() {
       setNewRoutineName('');
       setNewRoutineExercises('');
       setShowRoutineForm(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'routines');
+    } catch (error: any) {
+      console.error("Error at addRoutine:", error);
+      alert(`⚠️ Fallo al guardar la rutina: ${error.message || error}`);
     }
   };
 
   const deleteWorkout = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'workouts', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `workouts/${id}`);
+    } catch (error: any) {
+      console.error("Error at deleteWorkout:", error);
+      alert(`⚠️ Fallo al eliminar: ${error.message || error}`);
     }
   };
 
   const deleteRoutine = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'routines', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `routines/${id}`);
+    } catch (error: any) {
+      console.error("Error at deleteRoutine:", error);
+      alert(`⚠️ Fallo al eliminar: ${error.message || error}`);
     }
   };
 

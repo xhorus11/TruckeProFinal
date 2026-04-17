@@ -59,13 +59,13 @@ export default function Nutrition() {
     if (!auth.currentUser) return;
 
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const q = query(
+    const qMeals = query(
       collection(db, 'meals'),
       where('userId', '==', auth.currentUser.uid),
       where('date', '==', dateStr)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeMeals = onSnapshot(qMeals, (snapshot) => {
       const mealsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -75,8 +75,46 @@ export default function Nutrition() {
       handleFirestoreError(error, OperationType.LIST, 'meals');
     });
 
-    return () => unsubscribe();
+    const qHydration = query(
+      collection(db, 'hydration'),
+      where('userId', '==', auth.currentUser.uid),
+      where('date', '==', dateStr)
+    );
+
+    const unsubscribeHydration = onSnapshot(qHydration, (snapshot) => {
+      if (!snapshot.empty) {
+        setWaterGlasses(snapshot.docs[0].data().count || 0);
+      } else {
+        setWaterGlasses(0);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'hydration');
+    });
+
+    return () => {
+      unsubscribeMeals();
+      unsubscribeHydration();
+    };
   }, [selectedDate]);
+
+  const updateHydration = async (count: number) => {
+    if (!auth.currentUser) return;
+    setWaterGlasses(count); // Optimistic UI update
+    try {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const hydrationId = `${auth.currentUser.uid}_${dateStr}`;
+      // Usaremos un merge true para setDoc, no addDoc
+      const { setDoc } = await import('firebase/firestore');
+      await setDoc(doc(db, 'hydration', hydrationId), {
+        userId: auth.currentUser.uid,
+        date: dateStr,
+        count: count,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (error) {
+      console.error("Hydration update failed:", error);
+    }
+  };
 
   const analyzeAndAddMeal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,8 +273,9 @@ export default function Nutrition() {
   const deleteMeal = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'meals', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `meals/${id}`);
+    } catch (error: any) {
+      console.error("Error al borrar comida:", error);
+      alert(`⚠️ Fallo al eliminar: ${error.message || error}`);
     }
   };
 
@@ -579,7 +618,7 @@ export default function Nutrition() {
               {[...Array(8)].map((_, i) => (
                 <button
                   key={i}
-                  onClick={() => setWaterGlasses(i + 1)}
+                  onClick={() => updateHydration(i + 1)}
                   className={cn(
                     "w-10 h-12 rounded-xl border-2 transition-all flex items-center justify-center",
                     i < waterGlasses 

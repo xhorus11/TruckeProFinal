@@ -49,7 +49,7 @@ export default function Planner() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   
-  const { accessToken, fetchEvents, createEvent } = useGoogleCalendar();
+  const { accessToken, fetchEvents, createEvent, connectCalendar } = useGoogleCalendar();
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -118,21 +118,26 @@ export default function Planner() {
       await addDoc(collection(db, 'tasks'), taskData);
       
       if (accessToken) {
-        await createEvent({
-          summary: newTask,
-          description: `Categoría: ${category} (Sincronizado desde TrackerPro)`,
-          start: {
-            date: dateStr,
-          },
-          end: {
-            date: dateStr,
-          },
-        });
+        try {
+          await createEvent({
+            summary: newTask,
+            description: `Categoría: ${category} (Sincronizado desde TrackerPro)`,
+            start: {
+              date: dateStr,
+            },
+            end: {
+              date: dateStr,
+            },
+          });
+        } catch (calError: any) {
+          console.error("Calendar Sync error:", calError);
+        }
       }
       
       setNewTask('');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'tasks');
+    } catch (error: any) {
+      console.error("Error saving task:", error);
+      alert(`⚠️ Fallo al guardar la tarea: ${error.message || error}`);
     }
   };
 
@@ -141,16 +146,18 @@ export default function Planner() {
       await updateDoc(doc(db, 'tasks', id), {
         completed: !completed
       });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `tasks/${id}`);
+    } catch (error: any) {
+      console.error("Error updating task:", error);
+      alert(`⚠️ Fallo al actualizar la tarea: ${error.message || error}`);
     }
   };
 
   const deleteTask = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'tasks', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `tasks/${id}`);
+    } catch (error: any) {
+      console.error("Error deleting task:", error);
+      alert(`⚠️ Fallo al eliminar la tarea: ${error.message || error}`);
     }
   };
 
@@ -377,7 +384,11 @@ export default function Planner() {
                 <div className="text-center py-8 space-y-4">
                   <p className="text-sm text-slate-500">Conecta tu cuenta para ver tus eventos de Google Calendar.</p>
                   <button 
-                    onClick={() => window.location.reload()}
+                    onClick={async () => {
+                      const success = await connectCalendar();
+                      if (success) syncGoogleCalendar();
+                      else alert("No se pudo conectar a Google Calendar. Revisa si bloqueaste las ventanas emergentes.");
+                    }}
                     className="btn-secondary w-full text-sm font-bold flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
